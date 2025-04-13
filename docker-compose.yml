@@ -1,4 +1,4 @@
-version: '3'
+version: '3.9'
 
 services:
   # FastAPI app service
@@ -9,12 +9,13 @@ services:
     volumes:
       - .:/app
     depends_on:
-      - cassandra
+      cassandra:
+        condition: service_healthy
     environment:
       - CASSANDRA_HOST=cassandra
       - CASSANDRA_KEYSPACE=messenger
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-  
+
   # Cassandra database
   cassandra:
     image: cassandra:latest
@@ -31,4 +32,4 @@ services:
       retries: 10
 
 volumes:
-  cassandra_data: 
+  cassandra_data:

@@ -41,26 +41,83 @@ def create_keyspace(session):
     """
     logger.info(f"Creating keyspace {CASSANDRA_KEYSPACE} if it doesn't exist...")
     
-    # TODO: Students should implement keyspace creation
-    # Hint: Consider replication strategy and factor for a distributed database
-    
+    session.execute(f"""
+        CREATE KEYSPACE IF NOT EXISTS {CASSANDRA_KEYSPACE}
+        WITH REPLICATION = {{
+            'class': 'SimpleStrategy',
+            'replication_factor': 1
+        }}
+    """)
     logger.info(f"Keyspace {CASSANDRA_KEYSPACE} is ready.")
 
 def create_tables(session):
     """
     Create the tables for the application.
-    
-    This is where students will define the table schemas based on the requirements.
     """
     logger.info("Creating tables...")
     
-    # TODO: Students should implement table creation
-    # Hint: Consider:
-    # - What tables are needed to implement the required APIs?
-    # - What should be the primary keys and clustering columns?
-    # - How will you handle pagination and time-based queries?
+    session.execute("""
+        CREATE TABLE IF NOT EXISTS messages_by_conversation (
+            conversation_id UUID,
+            timestamp TIMESTAMP,
+            message_id UUID,
+            sender_id UUID,
+            receiver_id UUID,
+            content TEXT,
+            PRIMARY KEY ((conversation_id), timestamp, message_id)
+        ) WITH CLUSTERING ORDER BY (timestamp DESC, message_id ASC);
+    """)
+
+    session.execute("""
+        CREATE TABLE IF NOT EXISTS conversations_by_user (
+            user_id UUID,
+            conversation_id UUID,
+            last_updated_at TIMESTAMP,
+            last_message TEXT,
+            other_participants SET<UUID>,
+            PRIMARY KEY ((user_id), last_updated_at, conversation_id)
+        ) WITH CLUSTERING ORDER BY (last_updated_at DESC, conversation_id ASC);
+    """)
+
+    session.execute("""
+        CREATE TABLE IF NOT EXISTS conversation_participants (
+            conversation_id UUID,
+            user_id UUID,
+            joined_at TIMESTAMP,
+            PRIMARY KEY ((conversation_id), user_id)
+        );
+    """)
+
+    session.execute("""
+        CREATE TABLE IF NOT EXISTS user_details (
+            user_id UUID,
+            user_index INT,
+            username TEXT,
+            full_name TEXT,
+            email TEXT,
+            PRIMARY KEY (user_id)
+        );
+    """)
+
+    session.execute("""
+       CREATE TABLE IF NOT EXISTS conversation_metadata (
+            conversation_id UUID,
+            conversation_index INT,
+            PRIMARY KEY (conversation_id)
+        );       
+    """)
     
-    logger.info("Tables created successfully.")
+    session.execute("""
+        CREATE INDEX IF NOT EXISTS idx_conversation_index 
+        ON conversation_metadata (conversation_index);
+    """)
+    
+    session.execute("""
+        CREATE INDEX IF NOT EXISTS idx_user_index 
+        ON user_details (user_index);
+    """)
+    
+    logger.info("Tables and indexes created successfully.")
 
 def main():
     """Initialize the database."""
